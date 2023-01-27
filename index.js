@@ -3,18 +3,26 @@ const github = require('@actions/github');;
 
 async function start(){
     try {
-        const label = core.getInput('label');
+        /*
+        uses: dpanayotov/issue-cloner@v0.2
+with:
+  labelArray: 
+    -
+        ""
+        "label2"
+  targetRepo: elastic/enterprise-search-team
+  targetLabel: "team:ingestion"
+  token: ${{ secrets.CLONE_ISSUE_TOKEN }}
+  */
         const targetRepo = core.getInput('targetRepo', {required: true});
         const ghToken = core.getInput('token', {required: true});
 
         const octokit = new github.getOctokit(ghToken);
         const originalIssue = await getOriginalIssue(octokit);
-
-        if (!hasLabel(label, originalIssue)){
-            console.log(`Label ${label} not present. Will not copy issue`)
-            return;
-        }
+        
         const clonedIssue = await cloneIssue(octokit, targetRepo, originalIssue)
+        
+       // await addLabel(octokit, clonedIssue, targetLabel);
         
         await addComment(octokit, originalIssue, clonedIssue)
         
@@ -64,17 +72,21 @@ async function cloneIssue(octokit, targetRepo, original){
     return result;
 }
 
-async function addComment(octokit, originalIssue, clonedIssue){
-    const result = await octokit.rest.issues.createComment({
+
+async function addLabel(octokit, clonedIssue, taregetLabel){
+    const result = await octokit.rest.issues.createLabel({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
         issue_number: originalIssue.data.number,
-        body: `Issue cloned to ${clonedIssue.data.html_url}`
+        label: {
+            name: targetLabel
+        }
     })
     return result;
 }
 
 function hasLabel(label, issue){
+    console.dir(issue);
     const labels = issue.data.labels;
     for(let l of labels){
         if(label === l.name){
